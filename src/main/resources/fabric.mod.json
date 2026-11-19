@@ -2,16 +2,17 @@
   "schemaVersion": 1,
   "id": "liquidbounce",
   "version": "${version}",
-  "name": "LiquidBounce",
-  "description": "A free mixin-based injection hacked-client for Minecraft using the Fabric modding toolchain.",
+  "name": "AugustusBounce",
+  "description": "Unofficial LiquidBounce fork (GPLv3) — a mixin-based injection hacked-client for Minecraft using the Fabric modding toolchain.",
   "authors": [
-    "CCBlueX"
+    "CCBlueX",
+    "tamper000"
   ],
   "contributors": $contributors,
   "contact": {
-    "homepage": "https://liquidbounce.net/",
-    "sources": "https://github.com/CCBlueX/LiquidBounce/",
-    "issues": "https://github.com/CCBlueX/LiquidBounce/issues"
+    "homepage": "https://github.com/tamper000/AugustusBounce",
+    "sources": "https://github.com/tamper000/AugustusBounce",
+    "issues": "https://github.com/tamper000/AugustusBounce/issues"
   },
   "license": "GNU General Public License v3.0",
   "icon": "resources/liquidbounce/icon_64x64.png",

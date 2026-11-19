@@ -1,3 +1,7 @@
+> **AugustusBounce** — unofficial fork of [LiquidBounce](https://github.com/CCBlueX/LiquidBounce).
+> Original work © CCBlueX, licensed under GPLv3. Changes in this fork © tamper000, 2026.
+> Not affiliated with or supported by CCBlueX. Full source of every build is in this repository.
+
 <div align="center">
 <p>
     <img width="200" src="https://raw.githubusercontent.com/CCBlueX/LiquidCloud/master/LiquidBounce/liquidbounceLogo.svg">
