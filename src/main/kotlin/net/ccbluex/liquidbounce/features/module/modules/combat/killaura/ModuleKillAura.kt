@@ -75,6 +75,7 @@ import net.minecraft.client.gui.screens.inventory.ContainerScreen
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.phys.BlockHitResult
 
 /**
  * KillAura module
@@ -103,6 +104,17 @@ object ModuleKillAura : ClientModule("KillAura", ModuleCategories.COMBAT) {
     internal val criticalsSelectionMode by enumChoice("Criticals", CriticalsSelectionMode.SMART)
     private val keepSprint by boolean("KeepSprint", true)
 
+    /**
+     * Clicks on the first tick the target can take a hit again, even when the CPS schedule planned none.
+     */
+    private val perfectHit by boolean("PerfectHit", false)
+
+    private val stateCps by boolean("StateCPS", false)
+    private val firstHitCps by intRange("CPSFirstHit", 20..20, 1..30, "clicks")
+    private val targetCps by intRange("CPSOnTarget", 17..19, 1..30, "clicks")
+    private val wallCps by intRange("CPSOnWall", 8..12, 1..30, "clicks")
+    private val airCps by intRange("CPSInAir", 4..8, 1..30, "clicks")
+
     // Inventory Handling
     internal val ignoreOpenInventory by boolean("IgnoreOpenInventory", true)
     internal val simulateInventoryClosing by boolean("SimulateInventoryClosing", true)
@@ -122,6 +134,25 @@ object ModuleKillAura : ClientModule("KillAura", ModuleCategories.COMBAT) {
         tree(KillAuraFailSwing)
         tree(KillAuraFightBot)
         tree(KillAuraRangeIndicator)
+
+        clicker.cpsOverride = { if (stateCps) cpsForTarget() else null }
+        clicker.enforce { tick ->
+            tick == 0 && perfectHit && isHittableTarget()
+        }
+    }
+
+    private fun isHittableTarget(): Boolean {
+        val target = targetTracker.target ?: return false
+        return target.hurtTime <= 1
+    }
+
+    private fun cpsForTarget(): IntRange {
+        val target = targetTracker.target
+        if (target != null) {
+            return if (target.hurtTime == 0) firstHitCps else targetCps
+        }
+
+        return if (mc.hitResult is BlockHitResult) wallCps else airCps
     }
 
     override fun onDisabled() {
