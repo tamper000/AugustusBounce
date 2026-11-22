@@ -37,6 +37,7 @@ import net.minecraft.client.KeyMapping
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.util.Util
+import java.util.function.IntPredicate
 
 /**
  * An attack scheduler
@@ -74,6 +75,12 @@ open class Clicker<T>(
     private val technique by enumChoice("Technique", ClickTechnique.HUMAN)
     private val cps by intRange("CPS", 11..14, 1..maxCps, "clicks")
     private val maxPerTick by int("MaxPerTick", 2, 1..5, "clicks")
+
+    /**
+     * When it returns a range, that range replaces [cps] for the current tick,
+     * e.g. to click at a different rate depending on the target state.
+     */
+    var cpsOverride: (() -> IntRange?)? = null
 
     init {
         itemCooldown?.let(this::tree)
@@ -125,6 +132,13 @@ open class Clicker<T>(
         private set
 
     fun willClickAt(tick: Int = 1) = getClickAmount(tick) > 0
+
+    /**
+     * Adds one press to tick [tick] when the plan has none planned there, e.g. a click that has to land right now.
+     */
+    fun enforce(predicate: IntPredicate) {
+        plan.enforced = plan.enforced.or(predicate)
+    }
 
     /**
      * Presses consumed by the tick [tick] ticks from now.
@@ -220,7 +234,7 @@ open class Clicker<T>(
         ticksSinceLastClick++
         clickAmount = null
 
-        plan.cps = cps
+        plan.cps = cpsOverride?.invoke() ?: cps
         plan.maxPerTick = maxPerTick
         plan.tick(Util.getMillis())
     }

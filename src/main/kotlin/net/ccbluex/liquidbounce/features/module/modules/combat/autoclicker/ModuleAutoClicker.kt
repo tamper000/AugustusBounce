@@ -37,6 +37,7 @@ import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket
 import net.minecraft.world.item.BlockItem
 import net.minecraft.world.item.Items
+import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.level.block.DoorBlock
 import net.minecraft.world.level.block.FenceGateBlock
 import net.minecraft.world.level.block.TrapDoorBlock
@@ -58,6 +59,41 @@ object ModuleAutoClicker : ClientModule("AutoClicker", ModuleCategories.COMBAT) 
         internal val delayOnBroken by boolean("DelayOnBroken", true)
         private val objectiveType by enumChoice("Objective", ObjectiveType.ANY)
         internal val attacker = CrosshairAttacker(this, clicker) { attack && isOnObjective() }
+
+        /**
+         * Clicks on the first tick the target can take a hit again, even when the CPS schedule does not
+         * plan a click for it.
+         */
+        private val perfectHit by boolean("PerfectHit", false)
+
+        private val stateCps by boolean("StateCPS", false)
+        private val firstHitCps by intRange("CPSFirstHit", 20..20, 1..30, "clicks")
+            .visibleWhen { stateCps }
+        private val targetCps by intRange("CPSOnTarget", 17..19, 1..30, "clicks")
+            .visibleWhen { stateCps }
+        private val wallCps by intRange("CPSOnWall", 8..12, 1..30, "clicks")
+            .visibleWhen { stateCps }
+        private val airCps by intRange("CPSInAir", 4..8, 1..30, "clicks")
+            .visibleWhen { stateCps }
+
+        init {
+            clicker.cpsOverride = { if (stateCps) cpsForCrosshair() else null }
+            clicker.enforce { tick ->
+                tick == 0 && perfectHit && isHittableTarget()
+            }
+        }
+
+        private fun isHittableTarget(): Boolean {
+            val target = (mc.hitResult as? EntityHitResult)?.entity as? LivingEntity ?: return false
+            return target.hurtTime <= 1
+        }
+
+        private fun cpsForCrosshair(): IntRange = when (val crosshair = mc.hitResult) {
+            is EntityHitResult ->
+                if ((crosshair.entity as? LivingEntity)?.hurtTime == 0) firstHitCps else targetCps
+            is BlockHitResult -> wallCps
+            else -> airCps
+        }
 
         val isAttacking: Boolean
             get() = running && attacker.isAttacking
