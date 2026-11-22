@@ -40,6 +40,7 @@ import net.ccbluex.liquidbounce.features.module.modules.combat.ModuleAutoWeapon
 import net.ccbluex.liquidbounce.features.module.modules.combat.ModuleFakeLag
 import net.ccbluex.liquidbounce.features.module.modules.combat.ModuleHitbox
 import net.ccbluex.liquidbounce.features.module.modules.combat.ModuleKeepSprint
+import net.ccbluex.liquidbounce.features.module.modules.combat.ModuleMoveHelper
 import net.ccbluex.liquidbounce.features.module.modules.combat.ModuleMaceKill
 import net.ccbluex.liquidbounce.features.module.modules.combat.ModuleNoMissCooldown
 import net.ccbluex.liquidbounce.features.module.modules.combat.ModuleSuperKnockback
@@ -476,6 +477,7 @@ object ModuleManager : EventListener, Collection<ClientModule> by modules {
             ModuleSwordBlock,
             ModuleAutoShoot,
             ModuleKeepSprint,
+            ModuleMoveHelper,
             ModuleMaceKill,
             ModuleSpearKill,
             ModuleNoMissCooldown,

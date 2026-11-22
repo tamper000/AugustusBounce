@@ -28,6 +28,7 @@ import net.ccbluex.liquidbounce.event.tickHandler
 import net.ccbluex.liquidbounce.features.module.ClientModule
 import net.ccbluex.liquidbounce.features.module.ModuleCategories
 import net.ccbluex.liquidbounce.features.module.modules.combat.ModuleAutoWeapon
+import net.ccbluex.liquidbounce.features.module.modules.combat.ModuleMoveHelper
 import net.ccbluex.liquidbounce.features.module.modules.combat.criticals.ModuleCriticals.CriticalsSelectionMode
 import net.ccbluex.liquidbounce.features.module.modules.combat.elytratarget.ModuleElytraTarget
 import net.ccbluex.liquidbounce.features.module.modules.combat.killaura.KillAuraRotationsValueGroup.KillAuraRotationTiming.ON_TICK
@@ -279,6 +280,7 @@ object ModuleKillAura : ClientModule("KillAura", ModuleCategories.COMBAT) {
 
         // Attack enemy, according to the attack scheduler
         if (clicker.isClickTick && canAttackNow(target, mainHandStack) &&
+            !ModuleMoveHelper.shouldBlockClick &&
             !KillAuraAutoBlock.isPrioritizingBlocking) {
             clicker.prepareForAttack(rotation) {
                 // On each click, we check if we are still ready to attack

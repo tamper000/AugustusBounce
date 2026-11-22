@@ -27,6 +27,7 @@ import net.ccbluex.liquidbounce.event.handler
 import net.ccbluex.liquidbounce.event.tickUntil
 import net.ccbluex.liquidbounce.event.waitTicks
 import net.ccbluex.liquidbounce.features.module.modules.combat.ModuleAutoWeapon
+import net.ccbluex.liquidbounce.features.module.modules.combat.ModuleMoveHelper
 import net.ccbluex.liquidbounce.features.module.modules.combat.criticals.ModuleCriticals.CriticalsSelectionMode
 import net.ccbluex.liquidbounce.utils.clicking.Clicker
 import net.ccbluex.liquidbounce.utils.client.interaction
@@ -76,6 +77,11 @@ class CrosshairAttacker<T>(
      * @return false when the tick went to waiting for or stopping an item use instead
      */
     suspend fun attack(): Boolean {
+        // MoveHelper: a click while being knocked away from the target would miss
+        if (ModuleMoveHelper.shouldBlockClick) {
+            return true
+        }
+
         val crosshairTarget = mc.hitResult
         if (crosshairTarget is EntityHitResult) {
             ModuleAutoWeapon.onTarget(crosshairTarget.entity)
