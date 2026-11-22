@@ -43,6 +43,7 @@ import net.ccbluex.liquidbounce.features.module.modules.combat.ModuleKeepSprint
 import net.ccbluex.liquidbounce.features.module.modules.combat.ModuleMoveHelper
 import net.ccbluex.liquidbounce.features.module.modules.combat.ModuleMaceKill
 import net.ccbluex.liquidbounce.features.module.modules.combat.ModuleNoMissCooldown
+import net.ccbluex.liquidbounce.features.module.modules.combat.ModuleSmartClicking
 import net.ccbluex.liquidbounce.features.module.modules.combat.ModuleSuperKnockback
 import net.ccbluex.liquidbounce.features.module.modules.combat.ModuleSwordBlock
 import net.ccbluex.liquidbounce.features.module.modules.combat.ModuleTickBase
@@ -481,6 +482,7 @@ object ModuleManager : EventListener, Collection<ClientModule> by modules {
             ModuleMaceKill,
             ModuleSpearKill,
             ModuleNoMissCooldown,
+            ModuleSmartClicking,
             ModuleTriggerBot,
 
             // Exploit
