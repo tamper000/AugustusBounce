@@ -32,6 +32,7 @@ import net.ccbluex.liquidbounce.event.EventManager;
 import net.ccbluex.liquidbounce.event.TickLoopTaskExecutor;
 import net.ccbluex.liquidbounce.event.events.*;
 import net.ccbluex.liquidbounce.features.misc.SelfDestruct;
+import net.ccbluex.liquidbounce.features.module.modules.combat.ModuleAutoBlock;
 import net.ccbluex.liquidbounce.features.module.modules.combat.ModuleNoMissCooldown;
 import net.ccbluex.liquidbounce.features.module.modules.combat.autoclicker.ModuleAutoClicker;
 import net.ccbluex.liquidbounce.features.module.modules.combat.autoclicker.ModuleTriggerBot;
@@ -423,7 +424,8 @@ public abstract class MixinMinecraft {
         if (isUsingItem) {
             // A navigation eating or blocking keeps its use going without the key, as Minecraft Agent's own hook says
             if (!this.options.keyUse.isDown() && !ClientHooks.keepsUsing()
-                && !(KillAuraAutoBlock.INSTANCE.getRunning() && KillAuraAutoBlock.INSTANCE.getEnforcedBlockingHand() != null)) {
+                && !(KillAuraAutoBlock.INSTANCE.getRunning() && KillAuraAutoBlock.INSTANCE.getEnforcedBlockingHand() != null)
+                && !ModuleAutoBlock.INSTANCE.isEnforcingBlocking()) {
                 this.gameMode.releaseUsingItem(this.player);
             }
 
