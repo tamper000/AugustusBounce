@@ -68,13 +68,9 @@ object ModuleAutoClicker : ClientModule("AutoClicker", ModuleCategories.COMBAT) 
 
         private val stateCps by boolean("StateCPS", false)
         private val firstHitCps by intRange("CPSFirstHit", 20..20, 1..30, "clicks")
-            .visibleWhen { stateCps }
         private val targetCps by intRange("CPSOnTarget", 17..19, 1..30, "clicks")
-            .visibleWhen { stateCps }
         private val wallCps by intRange("CPSOnWall", 8..12, 1..30, "clicks")
-            .visibleWhen { stateCps }
         private val airCps by intRange("CPSInAir", 4..8, 1..30, "clicks")
-            .visibleWhen { stateCps }
 
         init {
             clicker.cpsOverride = { if (stateCps) cpsForCrosshair() else null }
