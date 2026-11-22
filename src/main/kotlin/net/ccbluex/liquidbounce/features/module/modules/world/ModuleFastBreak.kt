@@ -40,6 +40,11 @@ object ModuleFastBreak : ClientModule("FastBreak", ModuleCategories.WORLD) {
 
     private val breakDamage by float("BreakDamage", 0.8f, 0.1f..1f)
     private val onlyTool by boolean("OnlyTool", false)
+    private val multiplier by float("Multiplier", 1f, 1f..2f)
+    private val customInAirMultiplier by boolean("CustomInAirMultiplier", false)
+    private val inAirMultiplier by float("InAirMultiplier", 0.2f, 0f..1f)
+    private val artificialMiningSpeedEffect by int("ArtificialMiningSpeedEffect", 0, 0..3)
+    private val instant by boolean("Instant", false)
 
     private val modeChoice = choices("Mode", 0) { arrayOf(NoneMode(it), AbortAnother) }.apply(::tagBy)
 
@@ -50,9 +55,26 @@ object ModuleFastBreak : ClientModule("FastBreak", ModuleCategories.WORLD) {
 
         interaction.destroyDelay = 0
 
-        if (interaction.destroyProgress > breakDamage) {
+        if (interaction.isDestroying && (instant || interaction.destroyProgress > breakDamage)) {
             interaction.destroyProgress = 1f
         }
+    }
+
+    /**
+     * Haste-like speed boost and in-air multiplier, applied from MixinPlayer#getDestroySpeed.
+     */
+    @JvmStatic
+    fun modifyDestroySpeed(original: Float): Float {
+        if (!running) {
+            return original
+        }
+
+        var speed = original * (1f + artificialMiningSpeedEffect * 0.2f) * multiplier
+        // Vanilla divides by 5 in air; replace that instead of stacking on top of it
+        if (customInAirMultiplier && !player.onGround()) {
+            speed *= 5f * inAirMultiplier
+        }
+        return speed
     }
 
     override fun onDisabled() {

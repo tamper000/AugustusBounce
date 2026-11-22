@@ -34,6 +34,7 @@ import net.ccbluex.liquidbounce.features.module.modules.movement.ModuleSprint;
 import net.ccbluex.liquidbounce.features.module.modules.player.ModuleReach;
 import net.ccbluex.liquidbounce.features.module.modules.player.nofall.modes.NoFallNoGround;
 import net.ccbluex.liquidbounce.features.module.modules.render.hitfx.ModuleHitFX;
+import net.ccbluex.liquidbounce.features.module.modules.world.ModuleFastBreak;
 import net.ccbluex.liquidbounce.features.module.modules.world.ModuleNoSlowBreak;
 import net.ccbluex.liquidbounce.utils.aiming.RotationManager;
 import net.ccbluex.liquidbounce.utils.aiming.features.MovementCorrection;
@@ -178,6 +179,15 @@ public abstract class MixinPlayer extends MixinLivingEntity {
         }
 
         return original;
+    }
+
+    @ModifyReturnValue(method = "getDestroySpeed", at = @At("RETURN"))
+    private float hookFastBreakSpeed(float original) {
+        if (!liquid_bounce$isClientPlayer()) {
+            return original;
+        }
+
+        return ModuleFastBreak.INSTANCE.modifyDestroySpeed(original);
     }
 
     @ModifyArgs(method = "causeExtraKnockback", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/phys/Vec3;multiply(DDD)Lnet/minecraft/world/phys/Vec3;"))
