@@ -29,6 +29,7 @@ import net.ccbluex.liquidbounce.features.module.modules.combat.killaura.KillAura
 import net.ccbluex.liquidbounce.features.module.modules.combat.killaura.features.KillAuraAutoBlock
 import net.ccbluex.liquidbounce.utils.client.isBlocksAttacksExisting
 import net.ccbluex.liquidbounce.utils.combat.CombatManager
+import net.ccbluex.liquidbounce.utils.combat.shouldBeAttacked
 import net.ccbluex.liquidbounce.utils.entity.useItem
 import net.ccbluex.liquidbounce.utils.item.isSword
 import net.ccbluex.liquidbounce.utils.kotlin.EventPriorityConvention
@@ -125,14 +126,20 @@ object ModuleAutoBlock : ClientModule("AutoBlock", ModuleCategories.COMBAT) {
 
     private fun hasTarget(): Boolean {
         val attacked = target
-        if (attacked != null && attacked.isAlive && player.distanceTo(attacked) <= range) {
+        if (attacked != null && isValidTarget(attacked)) {
             return true
         }
 
         target = null
         val crosshair = (mc.hitResult as? EntityHitResult)?.entity as? LivingEntity ?: return false
-        return crosshair.isAlive && player.distanceTo(crosshair) <= range
+        return isValidTarget(crosshair)
     }
+
+    /**
+     * Respects the global target config, so teammates (Teams module) and friends are not blocked against.
+     */
+    private fun isValidTarget(entity: LivingEntity) =
+        entity.isAlive && player.distanceTo(entity) <= range && entity.shouldBeAttacked()
 
     /**
      * Whether a click is going to be made this tick, by the player or by a clicker.
