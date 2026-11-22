@@ -39,7 +39,7 @@ import net.ccbluex.liquidbounce.utils.network.sendStopSprinting
 import net.ccbluex.liquidbounce.utils.entity.isInsideWaterOrBubbleColumn
 import net.ccbluex.liquidbounce.utils.entity.movementForward
 import net.ccbluex.liquidbounce.utils.entity.movementSideways
-import net.ccbluex.liquidbounce.utils.kotlin.EventPriorityConvention.CRITICAL_MODIFICATION
+import net.ccbluex.liquidbounce.utils.kotlin.EventPriorityConvention.OBJECTION_AGAINST_EVERYTHING
 import net.ccbluex.liquidbounce.utils.kotlin.matchesAll
 import net.ccbluex.liquidbounce.utils.math.minus
 import net.ccbluex.liquidbounce.utils.movement.DirectionalInput
@@ -147,7 +147,9 @@ object ModuleSuperKnockback : ClientModule("SuperKnockback", ModuleCategories.CO
 
         @Suppress("unused")
         private val movementHandler = handler<SprintEvent>(
-            priority = CRITICAL_MODIFICATION
+            // Must run after Sprint (CRITICAL_MODIFICATION), otherwise the module would re-enable sprinting
+            // and the tap would never be registered by the server.
+            priority = OBJECTION_AGAINST_EVERYTHING
         ) { event ->
             if (cancelSprint && (event.source == SprintEvent.Source.MOVEMENT_TICK ||
                     event.source == SprintEvent.Source.INPUT)) {
