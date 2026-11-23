@@ -22,11 +22,14 @@ import net.ccbluex.fastutil.enumSetOf
 import net.ccbluex.liquidbounce.config.types.list.Tagged
 import net.ccbluex.liquidbounce.event.events.AttackEntityEvent
 import net.ccbluex.liquidbounce.event.events.MovementInputEvent
-import net.ccbluex.liquidbounce.event.events.PlayerTickEvent
+import net.ccbluex.liquidbounce.event.events.WorldChangeEvent
 import net.ccbluex.liquidbounce.event.handler
 import net.ccbluex.liquidbounce.features.module.ClientModule
 import net.ccbluex.liquidbounce.features.module.ModuleCategories
 import net.ccbluex.liquidbounce.utils.client.player
+import net.ccbluex.liquidbounce.utils.entity.squaredBoxedDistanceTo
+import net.ccbluex.liquidbounce.utils.kotlin.EventPriorityConvention.READ_FINAL_STATE
+import net.ccbluex.liquidbounce.utils.network.LocalPlayerFallDamageTracker
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.LivingEntity
 
@@ -48,8 +51,7 @@ object ModuleMoveHelper : ClientModule("MoveHelper", ModuleCategories.COMBAT) {
     private val range by float("Range", 3f, 1f..6f, "blocks")
 
     private var hitsTaken = 0
-    private var target: Entity? = null
-    private var knockedAway = false
+    private var countedHurt = false
 
     private val comboBreaker: Boolean
         get() = Mode.COMBO_BREAKER in modes
@@ -60,18 +62,21 @@ object ModuleMoveHelper : ClientModule("MoveHelper", ModuleCategories.COMBAT) {
     /**
      * While set, AutoClicker and KillAura must not attack: the player is out of reach and any click would miss.
      */
-    val shouldBlockClick: Boolean
-        get() = running && hitSelection && knockedAway
-
-    @Suppress("unused")
-    private val attackHandler = handler<AttackEntityEvent> { event ->
-        if (comboBreaker) {
-            hitsTaken = 0
+    fun shouldBlockClick(target: Entity?): Boolean {
+        if (!running || !hitSelection || target !is LivingEntity || !target.isAlive || player.hurtTime <= 0) {
+            return false
         }
 
-        if (hitSelection && event.entity is LivingEntity) {
-            target = event.entity
-            knockedAway = false
+        val delta = player.deltaMovement
+        val offset = target.position().subtract(player.position())
+        return offset.x * delta.x + offset.z * delta.z < 0.0 &&
+            target.squaredBoxedDistanceTo(player) > range.toDouble() * range
+    }
+
+    @Suppress("unused")
+    private val attackHandler = handler<AttackEntityEvent>(READ_FINAL_STATE) { event ->
+        if (!event.isCancelled && comboBreaker && event.entity is LivingEntity) {
+            hitsTaken = 0
         }
     }
 
@@ -81,9 +86,15 @@ object ModuleMoveHelper : ClientModule("MoveHelper", ModuleCategories.COMBAT) {
     @Suppress("unused")
     private val movementInputHandler = handler<MovementInputEvent> { event ->
         if (!comboBreaker || player.hurtTime != 9) {
+            countedHurt = false
             return@handler
         }
 
+        if (countedHurt || !LocalPlayerFallDamageTracker.isCurrentPlayerDamage) {
+            return@handler
+        }
+
+        countedHurt = true
         if (++hitsTaken > combos && player.onGround()) {
             event.jump = true
             hitsTaken = 0
@@ -91,30 +102,17 @@ object ModuleMoveHelper : ClientModule("MoveHelper", ModuleCategories.COMBAT) {
     }
 
     @Suppress("unused")
-    private val tickHandler = handler<PlayerTickEvent> {
-        val enemy = target
-        if (!hitSelection || enemy == null || !enemy.isAlive) {
-            target = null
-            knockedAway = false
-            return@handler
-        }
-
-        val delta = player.deltaMovement
-        val offset = enemy.position().subtract(player.position())
-        val distance = offset.horizontalDistance()
-
-        // Pushed away from the target and already out of reach -> clicking would miss.
-        if (offset.x * delta.x + offset.z * delta.z < 0.0 && distance > range) {
-            knockedAway = true
-        } else if (distance <= range) {
-            knockedAway = false
-        }
+    private val worldChangeHandler = handler<WorldChangeEvent> {
+        resetCombo()
     }
 
     override fun onDisabled() {
+        resetCombo()
+    }
+
+    private fun resetCombo() {
         hitsTaken = 0
-        target = null
-        knockedAway = false
+        countedHurt = false
     }
 
 }

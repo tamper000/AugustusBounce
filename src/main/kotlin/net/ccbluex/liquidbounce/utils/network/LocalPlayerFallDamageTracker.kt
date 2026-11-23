@@ -25,11 +25,13 @@ import net.ccbluex.liquidbounce.event.events.PacketEvent
 import net.ccbluex.liquidbounce.event.events.TransferOrigin
 import net.ccbluex.liquidbounce.event.events.WorldChangeEvent
 import net.ccbluex.liquidbounce.event.handler
+import net.ccbluex.liquidbounce.utils.client.mc
 import net.ccbluex.liquidbounce.utils.kotlin.EventPriorityConvention.READ_FINAL_STATE
 import net.minecraft.tags.DamageTypeTags
+import net.minecraft.world.entity.player.Player
 
 /**
- * Tracks whether the local player's current hurt cycle was caused by fall damage.
+ * Tracks fall damage and damage attributed to another player during the local player's current hurt cycle.
  *
  * The damage source travels with every successful hit
  * ([net.minecraft.server.level.ServerLevel#broadcastDamageEvent]), and the client applies the very same
@@ -46,9 +48,17 @@ object LocalPlayerFallDamageTracker : EventListener {
     private const val HURT_TICKS = 10
 
     private var fallDamageTicks = 0
+    @Volatile
+    private var playerDamage: Pair<Int, Int>? = null
 
     val isCurrentFallDamage: Boolean
         get() = fallDamageTicks > 0
+
+    val isCurrentPlayerDamage: Boolean
+        get() {
+            val id = playerDamage?.first ?: return false
+            return id >= 0 && id != mc.player?.id && mc.level?.getEntity(id) is Player
+        }
 
     @Suppress("unused")
     private val packetHandler = handler<PacketEvent>(READ_FINAL_STATE) { event ->
@@ -59,6 +69,8 @@ object LocalPlayerFallDamageTracker : EventListener {
         val packet = event.packet
         if (packet.isLocalPlayerDamage()) {
             fallDamageTicks = if (packet.sourceType.`is`(DamageTypeTags.IS_FALL)) HURT_TICKS else 0
+            // shortcut: ignore legacy damage without a known attacker until the protocol supplies one.
+            playerDamage = if (fallDamageTicks == 0) packet.sourceCauseId to HURT_TICKS else null
         }
     }
 
@@ -67,11 +79,15 @@ object LocalPlayerFallDamageTracker : EventListener {
         if (fallDamageTicks > 0) {
             fallDamageTicks--
         }
+        playerDamage?.let { (id, ticks) ->
+            playerDamage = if (ticks > 1) id to (ticks - 1) else null
+        }
     }
 
     @Suppress("unused")
     private val worldChangeHandler = handler<WorldChangeEvent> {
         fallDamageTicks = 0
+        playerDamage = null
     }
 
 }

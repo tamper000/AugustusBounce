@@ -164,21 +164,14 @@ public abstract class MixinPlayer extends MixinLivingEntity {
     @ModifyExpressionValue(method = "getDestroySpeed", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/world/entity/player/Player;onGround()Z"))
     private boolean injectOnAirNoSlow(boolean original) {
-        if (liquid_bounce$isClientPlayer()) {
-            if (ModuleNoSlowBreak.getOnAir()) {
-                return true;
-            }
+        return liquid_bounce$isClientPlayer() ? liquid_bounce$isGroundedForMining(original) : original;
+    }
 
-            if (NoFallNoGround.INSTANCE.getRunning()) {
-                return false;
-            }
-
-            if (CriticalsNoGround.INSTANCE.getRunning()) {
-                return false;
-            }
-        }
-
-        return original;
+    @Unique
+    private boolean liquid_bounce$isGroundedForMining(boolean onGround) {
+        return ModuleNoSlowBreak.getOnAir() || (onGround
+                && !NoFallNoGround.INSTANCE.getRunning()
+                && !CriticalsNoGround.INSTANCE.getRunning());
     }
 
     @ModifyReturnValue(method = "getDestroySpeed", at = @At("RETURN"))
@@ -187,7 +180,8 @@ public abstract class MixinPlayer extends MixinLivingEntity {
             return original;
         }
 
-        return ModuleFastBreak.INSTANCE.modifyDestroySpeed(original);
+        var onGround = ((Player) (Object) this).onGround();
+        return ModuleFastBreak.modifyDestroySpeed(original, !liquid_bounce$isGroundedForMining(onGround));
     }
 
     @ModifyArgs(method = "causeExtraKnockback", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/phys/Vec3;multiply(DDD)Lnet/minecraft/world/phys/Vec3;"))

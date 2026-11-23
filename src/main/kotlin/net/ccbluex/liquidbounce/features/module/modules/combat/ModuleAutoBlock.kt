@@ -24,18 +24,21 @@ import net.ccbluex.liquidbounce.event.events.WorldChangeEvent
 import net.ccbluex.liquidbounce.event.handler
 import net.ccbluex.liquidbounce.features.module.ClientModule
 import net.ccbluex.liquidbounce.features.module.ModuleCategories
-import net.ccbluex.liquidbounce.features.module.modules.combat.autoclicker.ModuleAutoClicker
-import net.ccbluex.liquidbounce.features.module.modules.combat.killaura.KillAuraClicker
 import net.ccbluex.liquidbounce.features.module.modules.combat.killaura.features.KillAuraAutoBlock
+import net.ccbluex.liquidbounce.features.module.modules.misc.ModuleTeams
 import net.ccbluex.liquidbounce.utils.client.isBlocksAttacksExisting
 import net.ccbluex.liquidbounce.utils.combat.CombatManager
+import net.ccbluex.liquidbounce.utils.combat.EntityTaggingManager
 import net.ccbluex.liquidbounce.utils.combat.shouldBeAttacked
+import net.ccbluex.liquidbounce.utils.entity.isBlockAction
 import net.ccbluex.liquidbounce.utils.entity.useItem
 import net.ccbluex.liquidbounce.utils.item.isSword
-import net.ccbluex.liquidbounce.utils.kotlin.EventPriorityConvention
+import net.ccbluex.liquidbounce.utils.kotlin.EventPriorityConvention.READ_FINAL_STATE
 import net.minecraft.world.InteractionHand
+import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.item.ItemUseAnimation
+import net.minecraft.world.item.ShieldItem
 import net.minecraft.world.phys.EntityHitResult
 
 /**
@@ -68,31 +71,42 @@ object ModuleAutoBlock : ClientModule("AutoBlock", ModuleCategories.COMBAT) {
      * Whether this module owns the use item action right now, checked by
      * [net.minecraft.client.Minecraft.handleKeybinds] so it does not release the block.
      */
-    fun isEnforcingBlocking() = blockingHand != null
+    fun isEnforcingBlocking(): Boolean {
+        val hand = blockingHand ?: return false
+        val player = mc.player ?: return false
+        if (!player.isUsingItem) {
+            return false
+        }
+
+        return player.usedItemHand == hand && player.isBlockAction ||
+            hand == InteractionHand.MAIN_HAND && isAssumedShield() &&
+            (player.usedItemHand == hand && player.useItem.isSword || player.useItem.item is ShieldItem)
+    }
 
     @Suppress("unused")
-    private val attackHandler = handler<AttackEntityEvent> { event ->
+    private val attackHandler = handler<AttackEntityEvent>(READ_FINAL_STATE) { event ->
         val entity = event.entity as? LivingEntity ?: return@handler
+        if (event.isCancelled || !isValidTarget(entity)) {
+            return@handler
+        }
 
         target = entity
         unblockTicksLeft = unblockTicks
-        stopBlocking()
+        unblockForAttack()
     }
 
     @Suppress("unused")
     private val worldChangeHandler = handler<WorldChangeEvent> {
         target = null
         unblockTicksLeft = 0
-        stopBlocking()
+        blockingHand = null
     }
 
     /**
-     * Runs after the clickers planned their ticks, but before they click, so the click is not eaten while blocking.
+     * Runs after the clickers, so queued vanilla clicks can take precedence over blocking.
      */
     @Suppress("unused")
-    private val tickHandler = handler<GameTickEvent>(
-        priority = EventPriorityConvention.CRITICAL_MODIFICATION
-    ) {
+    private val tickHandler = handler<GameTickEvent>(READ_FINAL_STATE) {
         // KillAura has its own, better integrated AutoBlocking
         if (KillAuraAutoBlock.running || CombatManager.shouldPauseCombat || !hasTarget()) {
             unblockTicksLeft = 0
@@ -105,7 +119,7 @@ object ModuleAutoBlock : ClientModule("AutoBlock", ModuleCategories.COMBAT) {
             unblockTicksLeft--
         }
 
-        if (unblocked || clickIncoming()) {
+        if (unblocked || mc.options.keyAttack.clickCount > 0) {
             stopBlocking()
             return@handler
         }
@@ -125,57 +139,50 @@ object ModuleAutoBlock : ClientModule("AutoBlock", ModuleCategories.COMBAT) {
     }
 
     private fun hasTarget(): Boolean {
+        val crosshair = (mc.hitResult as? EntityHitResult)?.entity as? LivingEntity
+        if (crosshair != null && isAlly(crosshair)) {
+            target = null
+            return false
+        }
+
         val attacked = target
         if (attacked != null && isValidTarget(attacked)) {
             return true
         }
 
         target = null
-        val crosshair = (mc.hitResult as? EntityHitResult)?.entity as? LivingEntity ?: return false
-        return isValidTarget(crosshair)
+        return crosshair != null && isValidTarget(crosshair)
     }
 
     /**
      * Respects the global target config, so teammates (Teams module) and friends are not blocked against.
      */
     private fun isValidTarget(entity: LivingEntity) =
-        entity.isAlive && player.distanceTo(entity) <= range && entity.shouldBeAttacked()
+        entity.isAlive && player.distanceTo(entity) <= range && !isAlly(entity) && entity.shouldBeAttacked()
 
-    /**
-     * Whether a click is going to be made this tick, by the player or by a clicker.
-     */
-    private fun clickIncoming(): Boolean {
-        if (mc.options.keyAttack.isDown) {
-            return true
-        }
+    private fun isAlly(entity: LivingEntity) = EntityTaggingManager.getTag(entity).targetingInfo.isFriend ||
+        (ModuleTeams.running && ModuleTeams.isInClientPlayersTeam(entity))
 
-        val autoClicker = ModuleAutoClicker.AttackButton.clicker
-        if (autoClicker.running && autoClicker.willClickAt(0)) {
-            return true
-        }
-
-        return KillAuraClicker.running && KillAuraClicker.willClickAt(0)
-    }
+    internal fun unblockForAttack() = stopBlocking()
 
     private fun startBlocking() {
-        if (blockingHand != null || player.isUsingItem) {
+        if (isEnforcingBlocking() || player.isUsingItem) {
             return
         }
 
         val hand = findBlockableHand() ?: return
-        useItem(hand)
-        blockingHand = hand
+        blockingHand = if (useItem(hand) is InteractionResult.Success) hand else null
     }
 
     private fun stopBlocking() {
-        if (blockingHand == null) {
-            return
-        }
-
+        val wasBlocking = isEnforcingBlocking()
         blockingHand = null
-        // Only releases the use action this module started, not food or potions
-        interaction.releaseUsingItem(player)
+        if (wasBlocking) {
+            interaction.releaseUsingItem(player)
+        }
     }
+
+    private fun isAssumedShield() = assumeShield && !isBlocksAttacksExisting && player.mainHandItem.isSword
 
     private fun findBlockableHand(): InteractionHand? {
         return InteractionHand.entries.find { hand ->
@@ -184,7 +191,7 @@ object ModuleAutoBlock : ClientModule("AutoBlock", ModuleCategories.COMBAT) {
             itemStack.useAnimation == ItemUseAnimation.BLOCK &&
                 itemStack.isItemEnabled(world.enabledFeatures()) &&
                 !player.cooldowns.isOnCooldown(itemStack)
-        } ?: if (assumeShield && !isBlocksAttacksExisting && player.mainHandItem.isSword) {
+        } ?: if (isAssumedShield()) {
             InteractionHand.MAIN_HAND
         } else {
             null

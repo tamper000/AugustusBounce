@@ -43,6 +43,7 @@ import net.minecraft.world.level.block.FenceGateBlock
 import net.minecraft.world.level.block.TrapDoorBlock
 import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.EntityHitResult
+import net.minecraft.world.phys.HitResult
 
 /**
  * AutoClicker module
@@ -61,8 +62,7 @@ object ModuleAutoClicker : ClientModule("AutoClicker", ModuleCategories.COMBAT) 
         internal val attacker = CrosshairAttacker(this, clicker) { attack && isOnObjective() }
 
         /**
-         * Clicks on the first tick the target can take a hit again, even when the CPS schedule does not
-         * plan a click for it.
+         * Adds a click on an empty tick when the target's hurtTime is 0 or 1.
          */
         private val perfectHit by boolean("PerfectHit", false)
 
@@ -87,7 +87,7 @@ object ModuleAutoClicker : ClientModule("AutoClicker", ModuleCategories.COMBAT) 
         private fun cpsForCrosshair(): IntRange = when (val crosshair = mc.hitResult) {
             is EntityHitResult ->
                 if ((crosshair.entity as? LivingEntity)?.hurtTime == 0) firstHitCps else targetCps
-            is BlockHitResult -> wallCps
+            is BlockHitResult -> if (crosshair.type == HitResult.Type.BLOCK) wallCps else airCps
             else -> airCps
         }
 

@@ -64,14 +64,14 @@ object ModuleFastBreak : ClientModule("FastBreak", ModuleCategories.WORLD) {
      * Haste-like speed boost and in-air multiplier, applied from MixinPlayer#getDestroySpeed.
      */
     @JvmStatic
-    fun modifyDestroySpeed(original: Float): Float {
-        if (!running) {
+    fun modifyDestroySpeed(original: Float, hasAirPenalty: Boolean): Float {
+        if (!running || onlyTool && !player.mainHandItem.isMiningTool) {
             return original
         }
 
         var speed = original * (1f + artificialMiningSpeedEffect * 0.2f) * multiplier
         // Vanilla divides by 5 in air; replace that instead of stacking on top of it
-        if (customInAirMultiplier && !player.onGround()) {
+        if (customInAirMultiplier && hasAirPenalty) {
             speed *= 5f * inAirMultiplier
         }
         return speed

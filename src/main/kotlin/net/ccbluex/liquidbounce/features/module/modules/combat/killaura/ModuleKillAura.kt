@@ -75,7 +75,7 @@ import net.minecraft.client.gui.screens.inventory.ContainerScreen
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.item.ItemStack
-import net.minecraft.world.phys.BlockHitResult
+import net.minecraft.world.phys.HitResult
 
 /**
  * KillAura module
@@ -105,7 +105,7 @@ object ModuleKillAura : ClientModule("KillAura", ModuleCategories.COMBAT) {
     private val keepSprint by boolean("KeepSprint", true)
 
     /**
-     * Clicks on the first tick the target can take a hit again, even when the CPS schedule planned none.
+     * Adds a click on an empty tick when the tracked target's hurtTime is 0 or 1.
      */
     private val perfectHit by boolean("PerfectHit", false)
 
@@ -152,7 +152,7 @@ object ModuleKillAura : ClientModule("KillAura", ModuleCategories.COMBAT) {
             return if (target.hurtTime == 0) firstHitCps else targetCps
         }
 
-        return if (mc.hitResult is BlockHitResult) wallCps else airCps
+        return if (mc.hitResult?.type == HitResult.Type.BLOCK) wallCps else airCps
     }
 
     override fun onDisabled() {
@@ -311,7 +311,7 @@ object ModuleKillAura : ClientModule("KillAura", ModuleCategories.COMBAT) {
 
         // Attack enemy, according to the attack scheduler
         if (clicker.isClickTick && canAttackNow(target, mainHandStack) &&
-            !ModuleMoveHelper.shouldBlockClick &&
+            !ModuleMoveHelper.shouldBlockClick(target) &&
             !KillAuraAutoBlock.isPrioritizingBlocking) {
             clicker.prepareForAttack(rotation) {
                 // On each click, we check if we are still ready to attack
@@ -320,7 +320,9 @@ object ModuleKillAura : ClientModule("KillAura", ModuleCategories.COMBAT) {
                 }
 
                 // Attack enemy
-                attackEntity(target, SwingMode.DO_NOT_HIDE, keepSprint && !shouldBlockSprinting)
+                if (!attackEntity(target, SwingMode.DO_NOT_HIDE, keepSprint && !shouldBlockSprinting)) {
+                    return@prepareForAttack false
+                }
                 range.update()
                 KillAuraNotifyWhenFail.failedHitsIncrement = 0
                 KillAuraAutoBlock.hasBlockedSinceAttack = false
