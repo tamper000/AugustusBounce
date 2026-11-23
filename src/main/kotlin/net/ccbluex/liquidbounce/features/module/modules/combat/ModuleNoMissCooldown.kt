@@ -30,6 +30,11 @@ object ModuleNoMissCooldown : ClientModule("NoMissCooldown", ModuleCategories.CO
     val removeAttackCooldown by boolean("RemoveAttackCooldown", true)
 
     /**
+     * Only removes the cooldown while the crosshair is over an entity (Augustus "OnlyAtTarget").
+     */
+    val onlyOnTarget by boolean("OnlyOnTarget", false)
+
+    /**
      * Cancels the attack when missing an attack.
      */
     val cancelAttackOnMiss by boolean("CancelAttackOnMiss", false)

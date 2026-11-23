@@ -323,7 +323,7 @@ public abstract class MixinMinecraft {
     @ModifyExpressionValue(method = "startAttack",
             at = @At(value = "FIELD", target = "Lnet/minecraft/client/Minecraft;missTime:I", ordinal = 0, opcode = Opcodes.GETFIELD))
     private int injectNoMissCooldown(int original) {
-        if (ModuleNoMissCooldown.INSTANCE.getRunning() && ModuleNoMissCooldown.INSTANCE.getRemoveAttackCooldown()) {
+        if (shouldRemoveAttackCooldown()) {
             return 0;
         }
 
@@ -362,7 +362,14 @@ public abstract class MixinMinecraft {
     @WrapWithCondition(method = "startAttack", at = @At(value = "FIELD",
         target = "Lnet/minecraft/client/Minecraft;missTime:I", ordinal = 1, opcode = Opcodes.PUTFIELD))
     private boolean disableAttackCooldown(Minecraft instance, int value) {
-        return !(ModuleNoMissCooldown.INSTANCE.getRunning() && ModuleNoMissCooldown.INSTANCE.getRemoveAttackCooldown());
+        return !shouldRemoveAttackCooldown();
+    }
+
+    private boolean shouldRemoveAttackCooldown() {
+        return ModuleNoMissCooldown.INSTANCE.getRunning()
+            && ModuleNoMissCooldown.INSTANCE.getRemoveAttackCooldown()
+            && (!ModuleNoMissCooldown.INSTANCE.getOnlyOnTarget()
+                || hitResult != null && hitResult.getType() == HitResult.Type.ENTITY);
     }
 
     @Inject(method = "startAttack", at = @At("HEAD"), cancellable = true)
