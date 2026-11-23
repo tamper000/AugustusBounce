@@ -21,12 +21,15 @@ package net.ccbluex.liquidbounce.injection.mixins.minecraft.entity;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
 import net.ccbluex.liquidbounce.event.EventManager;
 import net.ccbluex.liquidbounce.event.events.PlayerSafeWalkEvent;
 import net.ccbluex.liquidbounce.features.command.commands.ingame.fakeplayer.FakePlayer;
 import net.ccbluex.liquidbounce.features.module.modules.combat.ModuleAutoWeapon;
 import net.ccbluex.liquidbounce.features.module.modules.combat.ModuleKeepSprint;
+import net.ccbluex.liquidbounce.features.module.modules.combat.velocity.mode.VelocityIntaveLegacy;
 import net.ccbluex.liquidbounce.features.module.modules.combat.criticals.modes.CriticalsNoGround;
 import net.ccbluex.liquidbounce.features.module.modules.exploit.ModuleAntiReducedDebugInfo;
 import net.ccbluex.liquidbounce.features.module.modules.movement.ModuleNoClip;
@@ -42,6 +45,7 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
@@ -191,6 +195,24 @@ public abstract class MixinPlayer extends MixinLivingEntity {
             args.set(0, motion); // x
             args.set(2, motion); // z
         }
+    }
+
+    @WrapMethod(method = "attack")
+    private void hookIntaveAttackSlowdown(Entity target, Operation<Void> original) {
+        if ((Object) this instanceof LocalPlayer player && !ModuleKeepSprint.INSTANCE.getRunning()) {
+            var factor = VelocityIntaveLegacy.INSTANCE.attackFactor(player, target);
+            if (factor != null) {
+                var motion = player.getDeltaMovement();
+                var before = new Vec3(motion.x, motion.y, motion.z);
+                int attackTicks = player.attackStrengthTicker;
+                original.call(target);
+                if (attackTicks == 0 || player.attackStrengthTicker == 0) {
+                    VelocityIntaveLegacy.INSTANCE.applyAttackSlowdown(player, before, factor);
+                }
+                return;
+            }
+        }
+        original.call(target);
     }
 
     /**

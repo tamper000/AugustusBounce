@@ -29,15 +29,19 @@ import net.ccbluex.liquidbounce.features.module.ClientModule
 import net.ccbluex.liquidbounce.features.module.ModuleCategories
 import net.ccbluex.liquidbounce.features.module.modules.combat.velocity.mode.VelocityAAC442
 import net.ccbluex.liquidbounce.features.module.modules.combat.velocity.mode.VelocityBlocksMC20241123
+import net.ccbluex.liquidbounce.features.module.modules.combat.velocity.mode.VelocityBoundingBox
 import net.ccbluex.liquidbounce.features.module.modules.combat.velocity.mode.VelocityDexland20241001
 import net.ccbluex.liquidbounce.features.module.modules.combat.velocity.mode.VelocityGrim2344MC117
 import net.ccbluex.liquidbounce.features.module.modules.combat.velocity.mode.VelocityGrim2371
 import net.ccbluex.liquidbounce.features.module.modules.combat.velocity.mode.VelocityHylex20241117
 import net.ccbluex.liquidbounce.features.module.modules.combat.velocity.mode.VelocityHypixel20250127
 import net.ccbluex.liquidbounce.features.module.modules.combat.velocity.mode.VelocityIntave20261002
+import net.ccbluex.liquidbounce.features.module.modules.combat.velocity.mode.VelocityIntaveLegacy
 import net.ccbluex.liquidbounce.features.module.modules.combat.velocity.mode.VelocityJumpReset
 import net.ccbluex.liquidbounce.features.module.modules.combat.velocity.mode.VelocityLag
+import net.ccbluex.liquidbounce.features.module.modules.combat.velocity.mode.VelocityLadder
 import net.ccbluex.liquidbounce.features.module.modules.combat.velocity.mode.VelocityModify
+import net.ccbluex.liquidbounce.features.module.modules.combat.velocity.mode.VelocityPolarBlock
 import net.ccbluex.liquidbounce.features.module.modules.combat.velocity.mode.VelocityReduce
 import net.ccbluex.liquidbounce.features.module.modules.combat.velocity.mode.VelocityReversal
 import net.ccbluex.liquidbounce.features.module.modules.combat.velocity.mode.VelocityStrafe
@@ -63,6 +67,8 @@ object ModuleVelocity : ClientModule("Velocity", ModuleCategories.COMBAT, aliase
             VelocityJumpReset,
             VelocityLag,
             VelocityReduce,
+            VelocityBoundingBox,
+            VelocityLadder,
 
             // Server modes
             VelocityHypixel20250127,
@@ -75,6 +81,8 @@ object ModuleVelocity : ClientModule("Velocity", ModuleCategories.COMBAT, aliase
             VelocityGrim2344MC117,
             VelocityAAC442,
             VelocityIntave20261002,
+            VelocityIntaveLegacy,
+            VelocityPolarBlock,
         )
     ).apply(::tagBy)
 
@@ -100,7 +108,7 @@ object ModuleVelocity : ClientModule("Velocity", ModuleCategories.COMBAT, aliase
 
         if (packet.isLocalPlayerVelocity()) {
             // When delay is above 0, we will delay the velocity update
-            if (delay.last > 0) {
+            if (!event.isCancelled && delay.last > 0) {
                 event.cancelEvent()
 
                 delay.random().let { ticks ->

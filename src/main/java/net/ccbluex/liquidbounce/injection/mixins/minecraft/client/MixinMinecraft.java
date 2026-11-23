@@ -37,6 +37,7 @@ import net.ccbluex.liquidbounce.features.module.modules.combat.ModuleNoMissCoold
 import net.ccbluex.liquidbounce.features.module.modules.combat.autoclicker.ModuleAutoClicker;
 import net.ccbluex.liquidbounce.features.module.modules.combat.autoclicker.ModuleTriggerBot;
 import net.ccbluex.liquidbounce.features.module.modules.combat.killaura.features.KillAuraAutoBlock;
+import net.ccbluex.liquidbounce.features.module.modules.combat.velocity.mode.VelocityIntaveLegacy;
 import net.ccbluex.liquidbounce.features.module.modules.exploit.ModuleMultiActions;
 import net.ccbluex.liquidbounce.features.module.modules.misc.ModuleMiddleClickAction;
 import net.ccbluex.liquidbounce.features.module.modules.player.ModuleAutoBreak;
@@ -293,6 +294,13 @@ public abstract class MixinMinecraft {
     @Inject(method = "handleKeybinds", at = @At("RETURN"))
     private void hookHandleInputEvent(CallbackInfo callbackInfo) {
         EventManager.INSTANCE.callEvent(InputHandleEvent.INSTANCE);
+    }
+
+    @Inject(method = "handleKeybinds", at = @At("HEAD"))
+    private void hookIntaveDoubleHit(CallbackInfo ci) {
+        if (options.keyAttack.clickCount == 1 && VelocityIntaveLegacy.INSTANCE.shouldDoubleHit()) {
+            options.keyAttack.clickCount++;
+        }
     }
 
     /**
