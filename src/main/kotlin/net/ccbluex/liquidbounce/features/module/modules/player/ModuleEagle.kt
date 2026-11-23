@@ -47,7 +47,13 @@ object ModuleEagle : ClientModule(
             currentEdgeDistance = it.random()
         }
 
+    /**
+     * How long sneak stays pressed after the edge is left, so the release is not instant.
+     */
+    private val releaseDelay by intRange("ReleaseDelay", 0..0, 0..20, "ticks")
+
     private var currentEdgeDistance: Float = edgeDistance.random()
+    private var releaseTicks = 0
     private var wasSneaking = false
     private var sneakCaptured = false
 
@@ -128,6 +134,7 @@ object ModuleEagle : ClientModule(
     }
 
     override fun onDisabled() {
+        releaseTicks = 0
         wasSneaking = false
         sneakCaptured = false
         super.onDisabled()
@@ -141,14 +148,23 @@ object ModuleEagle : ClientModule(
         val conditionsMet = Conditional.shouldSneak(event)
         val isActive = shouldActivateEagle(event, conditionsMet)
 
-        updateSneakCapture(originalSneak, isActive)
+        if (isActive) {
+            releaseTicks = releaseDelay.random()
+        } else if (releaseTicks > 0) {
+            releaseTicks--
+        }
 
-        val controlsSneak = shouldOverrideSneak(conditionsMet, isActive)
+        val isReleasing = !isActive && releaseTicks > 0
+        val isSneaking = conditionsMet && (isActive || isReleasing)
+
+        updateSneakCapture(originalSneak, isSneaking)
+
+        val controlsSneak = shouldOverrideSneak(conditionsMet, isSneaking)
 
         event.sneak = if (controlsSneak) {
-            isActive
+            isSneaking
         } else {
-            originalSneak || isActive
+            originalSneak || isSneaking
         }
 
         updateSneakState(event.sneak)
